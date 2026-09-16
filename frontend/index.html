@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fall Detection System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; display: flex; background-color: #0f172a; color: #f8fafc; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 250px; background-color: #1e293b; padding: 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #334155; }
+        .sidebar-logo { font-size: 1.2rem; font-weight: bold; margin-bottom: 20px; color: #38bdf8; text-align: center; }
+        
+        .nav-item { padding: 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #cbd5e1; transition: 0.3s; text-decoration: none; border: none; background: none; width: 100%; text-align: left; font-size: 1rem; }
+        .nav-item:hover, .nav-item.active { background-color: #334155; color: #fff; }
+        .nav-item i.fa-house { color: #38bdf8; }
+        .nav-item i.fa-chart-line { color: #10b981; }
+        .nav-item i.fa-users { color: #f59e0b; }
+        .nav-item i.fa-gear { color: #94a3b8; }
+        .nav-item i.fa-circle-info { color: #a855f7; }
+
+        .footer-status { margin-top: auto; text-align: center; font-size: 0.75rem; color: #64748b; padding-top: 20px; border-top: 1px solid #334155; }
+        
+        .main-wrapper { flex: 1; display: flex; padding: 20px; gap: 20px; overflow-y: auto; }
+        .left-panel { flex: 2; display: flex; flex-direction: column; gap: 20px; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 300px; }
+        
+        .card { background: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .card-header { margin-top: 0; font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px; display: flex; align-items: center; gap: 8px;}
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; background: #334155; border: none; color: #cbd5e1; border-radius: 6px; cursor: pointer; transition: 0.3s; font-weight: 500; }
+        .tab-btn:hover { background: #475569; color: white; }
+        .tab-btn.active { background: #3b82f6; color: white; font-weight: bold; }
+        
+        .media-box { position: relative; width: 100%; background: #000; border-radius: 8px; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center; overflow: hidden; border: 2px solid #334155; }
+        video, canvas, img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+        
+        .upload-area { border: 2px dashed #475569; padding: 12px 20px; text-align: center; border-radius: 8px; margin-bottom: 15px; cursor: pointer; display: none; background: #0f172a; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .upload-area:hover { border-color: #3b82f6; background: #1e293b; }
+        .upload-area i { font-size: 1.8rem; color: #3b82f6; }
+        #mediaInput { display: none; }
+        
+        .btn-group { display: flex; gap: 15px; margin-top: 15px; }
+        .btn { flex: 1; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; background: transparent; }
+        .btn-start { background-color: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid #10b981; }
+        .btn-start:hover { background-color: #10b981; color: #fff; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        .btn-stop { background-color: rgba(225, 29, 72, 0.1); color: #f43f5e; border: 1px solid #e11d48; }
+        .btn-stop:hover { background-color: #e11d48; color: #fff; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4); }
+        
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.95rem; }
+        .highlight-val { font-weight: bold; }
+        
+        .alert-banner { background: rgba(225, 29, 72, 0.15); border: 1px solid #e11d48; color: #f43f5e; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; display: none; margin-bottom: 15px; animation: pulse 1s infinite alternate;}
+        @keyframes pulse { from { box-shadow: 0 0 5px #e11d48; } to { box-shadow: 0 0 15px #e11d48; } }
+        
+        .log-list { list-style: none; padding: 0; margin: 0; max-height: 300px; overflow-y: auto; }
+        .log-item { background: #334155; margin-bottom: 10px; padding: 12px; border-radius: 6px; font-size: 0.85rem; border-left: 4px solid #e11d48; }
+        .empty-log { text-align: center; color: #64748b; font-size: 0.9rem; padding: 20px 0; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #1e293b; margin: 5% auto; padding: 30px; border: 1px solid #334155; width: 90%; max-width: 500px; border-radius: 12px; color: #f8fafc; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .close-btn { color: #94a3b8; float: right; font-size: 28px; font-weight: bold; cursor: pointer; transition: 0.2s; line-height: 1; }
+        .close-btn:hover { color: #ef4444; }
+        .modal-content h2 { margin-top: 0; border-bottom: 1px solid #334155; padding-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        
+        .setting-group { margin-bottom: 20px; }
+        .setting-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #cbd5e1; }
+        .setting-slider { width: 100%; cursor: pointer; }
+        .setting-select { width: 100%; padding: 10px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: white; cursor: pointer; }
+        .toggle-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .toggle-label input { width: 18px; height: 18px; accent-color: #38bdf8; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .stat-box { background: #0f172a; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+        .stat-val { font-size: 1.5rem; font-weight: bold; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fa-solid fa-shield-halved"></i> AI Vision Guard
+        </div>
+        <button class="nav-item active"><i class="fa-solid fa-house"></i> Dashboard</button>
+        <button class="nav-item" id="statsBtn"><i class="fa-solid fa-chart-line"></i> Statistics</button>
+        <button class="nav-item dummy-link"><i class="fa-solid fa-users"></i> People</button>
+        <button class="nav-item" id="settingsBtn"><i class="fa-solid fa-gear"></i> Settings</button>
+        <button class="nav-item" id="aboutBtn"><i class="fa-solid fa-circle-info"></i> About System</button>
+        
+        <div class="footer-status">
+            <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> API Connected<br>
+            <span style="font-size: 0.65rem; display: block; margin-top: 5px;" id="currentModeDisplay">MODE: CAMERA</span>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="left-panel">
+            <div class="card">
+                <div class="tabs">
+                    <button class="tab-btn active" id="tabCamera"><i class="fa-solid fa-video"></i> Live Camera</button>
+                    <button class="tab-btn" id="tabVideo"><i class="fa-solid fa-film"></i> Upload Video</button>
+                    <button class="tab-btn" id="tabImage"><i class="fa-solid fa-image"></i> Upload Image</button>
+                </div>
+
+                <label class="upload-area" id="uploadArea">
+                    <input type="file" id="mediaInput">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <div id="fileNameDisplay" style="color: #cbd5e1; font-weight: 500;">Click here to choose a file...</div>
+                </label>
+
+                <div class="media-box">
+                    <video id="videoElement" autoplay playsinline style="display:none;"></video>
+                    <img id="imagePreview" style="display:none;">
+                    <canvas id="canvasElement"></canvas>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-start" id="startBtn"><i class="fa-solid fa-play"></i> Start System</button>
+                    <button class="btn btn-stop" id="stopBtn"><i class="fa-solid fa-stop"></i> Stop</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card">
+                <h3 class="card-header"><i class="fa-solid fa-chart-pie" style="color: #38bdf8;"></i> Detection Summary</h3>
+                <div class="summary-row">
+                    <span>Session Uptime:</span>
+                    <span class="highlight-val" id="liveUptime" style="color: #10b981;">00:00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Persons Detected:</span>
+                    <span class="highlight-val" id="personsCount">0</span>
+                </div>
+                <div class="summary-row">
+                    <span>Current Action:</span>
+                    <span class="highlight-val" id="currentActionTxt" style="color: #38bdf8;">None</span>
+                </div>
+                <div class="summary-row">
+                    <span>Risk Level:</span>
+                    <span class="highlight-val" id="riskLevel" style="color: #10b981;">Low</span>
+                </div>
+                <div class="summary-row">
+                    <span>Processing Time:</span>
+                    <span class="highlight-val"><span id="processingTime">0.00</span> sec</span>
+                </div>
+            </div>
+
+            <div class="card" style="flex: 1;">
+                <h3 class="card-header"><i class="fa-solid fa-bell" style="color: #f59e0b;"></i> Alert Logs</h3>
+                <div class="alert-banner" id="alertBox">
+                    <i class="fa-solid fa-triangle-exclamation"></i> CRITICAL FALL DETECTED
+                </div>
+                <ul class="log-list" id="logList">
+                    <div class="empty-log" id="emptyLogMessage">No alerts triggered yet. System is safe.</div>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="aboutModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <span class="close-btn closeModal">&times;</span>
+            <h2 style="color: #a855f7;"><i class="fa-solid fa-shield-halved"></i> About AI Vision Guard</h2>
+            <p style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
+                An enterprise-grade Fall Detection System powered by an optimized <strong>YOLO11</strong> deep learning model and a robust <strong>FastAPI</strong> backend, designed for real-time human action recognition and critical incident alerting.
+            </p>
+            <h3 style="color: #38bdf8; margin-top: 20px; font-size: 1.05rem;"><i class="fa-solid fa-microchip"></i> How It Works</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">
+                The system continuously captures frames from live feeds or media files, processing them through our custom-trained YOLO model (trained on 8 distinct human states: Sitting, Standing, Walking, Lying, Desk Activity, Phone Interaction, Gestures, and <strong>Fall</strong>). By understanding normal behaviors, the system drastically reduces false positives when a real fall occurs.
+            </p>
+            <h3 style="color: #10b981; margin-top: 20px; font-size: 1.05rem;"><i class="fa-solid fa-star"></i> Core Features</h3>
+            <ul style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; padding-left: 20px;">
+                <li><strong style="color: #e11d48;">Dynamic Confidence Thresholding:</strong> A powerful administrative control that sets a minimum certainty percentage for fall alerts.</li>
+                <li><strong style="color: #38bdf8;">Smart Alert Cooldown:</strong> Prevents log spamming by enforcing a customizable delay.</li>
+                <li><strong style="color: #10b981;">Session Analytics:</strong> Real-time tracking of processing times, fall rates, and average confidence levels.</li>
+                <li><strong style="color: #f59e0b;">Desktop Notifications:</strong> Pushes browser alerts directly to the OS even if the dashboard is minimized.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn closeModal">&times;</span>
+            <h2 style="color: #94a3b8;"><i class="fa-solid fa-gear"></i> System Settings</h2>
+            
+            <div class="setting-group">
+                <label>Fall Confidence Threshold: <span id="confValueDisplay">50</span>%</label>
+                <input type="range" id="confSlider" class="setting-slider" min="10" max="95" value="50">
+                <small style="color: #64748b; font-size: 0.8rem;">Minimum certainty required to trigger a fall alert.</small>
+            </div>
+            
+            <div class="setting-group">
+                <label>Alert Cooldown Period</label>
+                <select id="cooldownSelect" class="setting-select">
+                    <option value="3000">3 Seconds (High Frequency)</option>
+                    <option value="5000" selected>5 Seconds (Recommended)</option>
+                    <option value="10000">10 Seconds (Low Frequency)</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label class="toggle-label">
+                    <input type="checkbox" id="audioToggle">
+                    Enable Audio Alarm
+                </label>
+            </div>
+
+            <div class="setting-group">
+                <label class="toggle-label">
+                    <input type="checkbox" id="desktopNotifToggle">
+                    Enable OS Desktop Notifications
+                </label>
+            </div>
+
+            <div class="setting-group">
+                <label class="toggle-label">
+                    <input type="checkbox" id="bboxToggle" checked>
+                    Display Bounding Boxes on Video Feed
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-btn closeModal">&times;</span>
+            <h2 style="color: #10b981;"><i class="fa-solid fa-chart-line"></i> Overall Statistics</h2>
+            <p style="color: #94a3b8; font-size: 0.9rem; margin-top: 0;">Cumulative analytics across all monitoring sessions.</p>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div style="color: #cbd5e1; font-size: 0.9rem;">Total Falls</div>
+                    <div class="stat-val" id="statTotalFalls" style="color: #e11d48;">0</div>
+                </div>
+                <div class="stat-box">
+                    <div style="color: #cbd5e1; font-size: 0.9rem;">Fall Rate</div>
+                    <div class="stat-val" id="statFallRate" style="color: #f59e0b;">0.0%</div>
+                </div>
+                <div class="stat-box">
+                    <div style="color: #cbd5e1; font-size: 0.9rem;">Avg Confidence</div>
+                    <div class="stat-val" id="statAvgConf" style="color: #38bdf8;">0.0%</div>
+                </div>
+                <div class="stat-box">
+                    <div style="color: #cbd5e1; font-size: 0.9rem;">Avg Process Time</div>
+                    <div class="stat-val" id="statAvgTime" style="color: #10b981;">0.00s</div>
+                </div>
+                <div class="stat-box" style="grid-column: span 2;">
+                    <div style="color: #cbd5e1; font-size: 0.9rem;">Total Frames Analyzed</div>
+                    <div class="stat-val" id="statFrames" style="color: #cbd5e1;">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
